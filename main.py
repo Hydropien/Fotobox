@@ -91,6 +91,7 @@ class CaptureWorker(QtCore.QObject):
     finished = QtCore.pyqtSignal(object)     # CaptureResult
     error = QtCore.pyqtSignal(str)
     progress = QtCore.pyqtSignal(str)
+    flash = QtCore.pyqtSignal()
 
     def __init__(self, tmp_dir: str, device_index: int = 0, use_webcam: bool = True):
         super().__init__()
@@ -106,6 +107,7 @@ class CaptureWorker(QtCore.QObject):
             tmp_path = os.path.join(self._tmp_dir, f"{token}.jpg")
 
             self.progress.emit("Foto wird aufgenommen …")
+            self.flash.emit()
 
             ok = False
             if self._use_webcam and CV_AVAILABLE:
@@ -402,9 +404,6 @@ class PhotoboxWindow(QtWidgets.QMainWindow):
         self.lbl_countdown.setText("😊")
         self.lbl_countdown_hint.setText("Bitte lächeln!")
 
-        # Blitz (weißes Overlay) kurz vor der Aufnahme
-        self.flash_overlay.flash(ms=120)
-
         self._set_status("Aufnahme startet …")
         QtCore.QTimer.singleShot(130, self._start_capture_async)
 
@@ -419,6 +418,7 @@ class PhotoboxWindow(QtWidgets.QMainWindow):
 
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._set_status)
+        self._worker.flash.connect(self._trigger_flash)
         self._worker.finished.connect(self._capture_finished)
         self._worker.error.connect(self._capture_error)
 
@@ -519,6 +519,9 @@ class PhotoboxWindow(QtWidgets.QMainWindow):
             self.lbl_countdown_status.setText(f"Status: {msg}")
         if hasattr(self, "lbl_review_status"):
             self.lbl_review_status.setText(f"Status: {msg}")
+
+    def _trigger_flash(self) -> None:
+        self.flash_overlay.flash(ms=160)
 
     # ---------- Keys ----------
 
